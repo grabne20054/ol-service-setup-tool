@@ -31,6 +31,15 @@ class SSHClient:
         else:
             stdin, stdout, stderr = self.client.exec_command(command, get_pty=True)
         return stdout.read().decode()
+    
+    def transfer_file(self, local_path: str, remote_path: str):
+        if not self.client:
+            raise Exception("SSH client is not connected")
+        
+        sftp = self.client.open_sftp()
+        sftp.put(local_path, remote_path)
+        sftp.close()
+        print(f"Transferred file to {self.hostname}:{remote_path}")
 
     def disconnect(self):
         if self.client:
