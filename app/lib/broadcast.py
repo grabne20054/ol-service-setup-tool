@@ -4,6 +4,7 @@ import os
 import redis
 import time
 import random
+from rcache.connector import RedisCacheConnector
 
 
 load_dotenv()
@@ -17,10 +18,15 @@ CACHE_TTL = 60*3
 class DiscoverManagerNodes(sshclient.SSHClient):
     
     def __init__(self):
-        self.hostname = os.getenv("INIT_MASTER_NODE")
+        self.init = True
+        self.__choose_hostname()
         super().__init__(self.hostname, "ol", "ol") # sichere Speicherung Zugangsdaten?
         print(f"Initial connection to {self.hostname}")
         self.connect()
+        self.rcache_conn = RedisCacheConnector(host=CACHE_SERVICE_NAME)
+        print("Connecting to Redis cache...")
+        self.rcache_client = self.rcache_conn.get_client()
+        print("Connected to Redis cache.")
 
     def __get_manager_nodes(self) -> list[str]:
         master_nodes_ids = []
@@ -53,36 +59,32 @@ class DiscoverManagerNodes(sshclient.SSHClient):
             ips = self.__get_manager_nodes_ips()
             decoded_ips = self.__decode_ips(ips)
             ips = decoded_ips
-            r = redis.Redis(host=CACHE_SERVICE_NAME, port=6379, decode_responses=True) # service name!
-            r.set('manager_nodes', ips)
-            r.close()
+            self.rcache_client.set('manager_nodes', ips)
+            self.rcache_client.close()
         except Exception as e:
             print("Error updating Redis with manager nodes:", e)
 
+    # outdated - not used
     def __clear_cache(self):
         try:
-            r = redis.Redis(host=CACHE_SERVICE_NAME, port=6379, decode_responses=True) # service name!
-            r.delete('manager_nodes')
-            r.close()
+            self.rcache_client.delete('manager_nodes')
             print("Cleared Redis cache.")
         except Exception as e:
             print("Error clearing Redis:", e)
 
     def __check_cache(self) -> bool:
         try:
-            r = redis.Redis(host=CACHE_SERVICE_NAME, port=6379, decode_responses=True) # service name!
-            cached_value = r.get('manager_nodes')
-            r.close()
+            cached_value = self.rcache_client.get('manager_nodes')
+            self.rcache_client.close()
             return cached_value is not None
         except Exception as e:
             print("Error checking Redis cache:", e)
             return False
 
-    def __choose_connector(self) -> None:
+    def choose_connector(self) -> None:
         if self.__check_cache():
-            r = redis.Redis(host=CACHE_SERVICE_NAME, port=6379, decode_responses=True) # service name!
-            cached_value = r.get('manager_nodes')
-            r.close()
+            cached_value = self.rcache_client.get('manager_nodes')
+            self.rcache_client.close()
             ips = self.__encode_ips(cached_value)
             chosen_ip = random.choice(ips)
             self.hostname = chosen_ip
@@ -91,10 +93,17 @@ class DiscoverManagerNodes(sshclient.SSHClient):
             chosen_ip = random.choice(ips)
             self.hostname = chosen_ip
 
+    def __choose_hostname(self) -> None:
+        if self.init:
+            self.hostname = os.getenv("INIT_MASTER_NODE")
+            self.init = False
+        else:
+            self.choose_connector()
+
     def perform_health_check(self):
         try:
             while True:
-                self.__choose_connector()
+                self.choose_connector()
                 print(f"Connecting to {self.hostname}")
                 self.__clear_cache()
                 self.__update_cache_with_manager_nodes()
@@ -102,6 +111,3 @@ class DiscoverManagerNodes(sshclient.SSHClient):
                 time.sleep(CACHE_TTL)
         except Exception as e:
             print(e)
-
-test = DiscoverManagerNodes()
-test.perform_health_check()
