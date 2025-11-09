@@ -1,10 +1,10 @@
-import sshclient
+from lib import sshclient
 from dotenv import load_dotenv
 import os
 import redis
 import time
 import random
-from rcache.connector import RedisCacheConnector
+from lib.rcache.connector import RedisCacheConnector
 
 
 load_dotenv()
