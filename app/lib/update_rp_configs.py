@@ -14,14 +14,23 @@ class UpdateRPConfigs:
                 configs.append(file_name)
         return configs
     
-    def mount_config(self, config_remote_path: str, service_name: str = "globalrp"):
-        res = self.handler.execute_command(
-            f"sudo docker service update "
-            f"{' '.join([f'--config-add source={config_name},target={config_remote_path}/{config_name}' for config_name in self.get_all_local_configs()])} "
-            f"{service_name}"
-        )
-        print(f"Updated service {service_name} with config {self.get_all_local_configs()} at {config_remote_path}: {res}")
-        self.handler.rcache_client.set(f"{service_name}", "Configs mounted")
+    def mount_config(self, config_remote_path="/etc/nginx/conf.d", service_name="globalrp"):
+        config_flags = []
+
+        for config_name in self.get_all_local_configs():
+            target_path = f"{config_remote_path}/{config_name}"
+            if not target_path.endswith(".conf"):
+                target_path += ".conf"
+
+            config_flags.append(
+                f'--config-add source={config_name},target={target_path}'
+            )
+
+        cmd = f"sudo docker service update {' '.join(config_flags)} {service_name}"
+
+        res = self.handler.execute_command(cmd)
+        print(f"Updated service {service_name} with config files at {config_remote_path}: {res}")
+
 
     def clear_local_configs(self):
         for file_name in self.get_all_local_configs():
