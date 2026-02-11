@@ -1,13 +1,13 @@
 import os 
 from lib import broadcast
-from lib import service_pool
+from lib.service_configs import handler
 
 # service_name --> hashed
 
 class ConfigLoader:
-    def __init__(self, config_path, pool: service_pool.ServicePool, handler: broadcast.DiscoverManagerNodes, service_name: str):
+    def __init__(self, config_path, pool: handler.ServicesConfigHandler, handler: broadcast.DiscoverManagerNodes, service_name: str):
         self.config_path = config_path
-        self.pool = pool
+        self.pool = pool.prepare_config()
         self.handler = handler
         self.service_name = service_name
 

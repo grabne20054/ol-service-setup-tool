@@ -1,5 +1,5 @@
 from lib import broadcast
-from lib import service_pool
+from lib.service_configs import handler
 from lib.config_loader import ConfigLoader
 from lib.update_rp_configs import UpdateRPConfigs
 from lib.init_service.state import State
@@ -13,7 +13,7 @@ from lib.init_service.setup_failed import SetupFailed
 class SetupService:
     def __init__(self, service_name: str, initial_state: State, callback_url: str = ""):
         self.service_name = service_name
-        self.pool = service_pool.ServicePool(service_name=self.service_name)
+        self.pool = handler.ServicesConfigHandler(service_name=self.service_name).prepare_config()
         self.handler = broadcast.DiscoverManagerNodes()
         self.manager_node = self.handler.hostname
         self.callback_url = callback_url
@@ -22,7 +22,7 @@ class SetupService:
     def create_service(self):
         service_counter = 0
         try:
-            for service, config in self.pool.services.items():
+            for service, config in self.pool.items():
                     res, err, exit_status = self.handler.execute_command(
                         f"sudo docker service create --name {self.get_final_name(service)} "
                         f"--replicas {config.get('replicas', 1)} "
@@ -35,7 +35,7 @@ class SetupService:
                     elif res:
                         print(f"Service creation output for {service}: {res} / Exit Status: {exit_status}")
                         service_counter += 1
-            if service_counter == len(self.pool.services):
+            if service_counter == len(self.pool.keys()):
                 self.setState(ServicesCreated())
             else:
                 self.setState(SetupFailed("Not all services were created successfully."))
@@ -88,10 +88,10 @@ class SetupService:
 
     def run(self):
         self.create_service()
-        if isinstance(self.state, ServicesCreated):
+        '''if isinstance(self.state, ServicesCreated):
             self.create_config()
         if isinstance(self.state, ConfigsCreated):
             self.update_rp_configs()
-        print(f"Final state after setup: {self.state.__class__.__name__}")
+        print(f"Final state after setup: {self.state.__class__.__name__}")'''
 
         
