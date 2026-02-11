@@ -88,10 +88,10 @@ class SetupService:
 
     def run(self):
         self.create_service()
-        '''if isinstance(self.state, ServicesCreated):
+        if isinstance(self.state, ServicesCreated):
             self.create_config()
         if isinstance(self.state, ConfigsCreated):
             self.update_rp_configs()
-        print(f"Final state after setup: {self.state.__class__.__name__}")'''
+        print(f"Final state after setup: {self.state.__class__.__name__}")
 
         
