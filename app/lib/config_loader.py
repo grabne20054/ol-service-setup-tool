@@ -38,11 +38,10 @@ class ConfigLoader:
 
                 configs.append(config_content)
 
-        merged_config = "\n\n".join(configs)
+        with open(os.path.join(self.config_path, self.service_name + ".conf"), 'w') as f:
+            f.write("\n\n".join(configs))
 
-        self.append_location_section(merged_config)
-
-
+    ## deprecated
     def append_location_section(self, location_section: str):
         server_template_path = os.path.join(self.config_path, "server-template.conf")
 
@@ -73,14 +72,16 @@ class ConfigLoader:
 
             server_template = ""
 
-
+    def check_existing_local_config(self,):
+        config_file_path = os.path.join(self.config_path, self.service_name + ".conf")
+        return os.path.exists(config_file_path)
 
     def create_config_on_host(self):
-        local_path = os.path.join(self.config_path, "nginx-server.conf")
-        remote_path = "/tmp/nginx-server.conf"
+        local_path = os.path.join(self.config_path, self.service_name + ".conf")
+        remote_path = "/tmp/" + self.service_name + ".conf"
         self.handler.transfer_file(local_path, remote_path)
 
-        config_name = "nginx-server.conf"
+        config_name = self.service_name + ".conf"
 
         try:
             res_rm = self.handler.execute_command(f"sudo docker config rm {config_name}")
@@ -101,7 +102,7 @@ class ConfigLoader:
             print(f"Error removing Docker config for {self.service_name}-{self.service_type}: {e}")
 
     def clear_local_config(self):
-        config_file_path = os.path.join(self.config_path, "nginx-server.conf")
+        config_file_path = os.path.join(self.config_path, self.service_name + ".conf")
         if os.path.exists(config_file_path):
             os.remove(config_file_path)
             print(f"Local configuration file {config_file_path} removed.")
@@ -111,7 +112,8 @@ class ConfigLoader:
     def load(self):
         self.prepare_configs()
         res = self.create_config_on_host()
-        self.handler.rcache_client.set(f"{self.service_name}", "Config loaded")
-        self.clear_local_config()
+        if res is not None:
+            self.handler.rcache_client.set(f"{self.service_name}", "Config loaded")
+        #self.clear_local_config()
         return res
 
