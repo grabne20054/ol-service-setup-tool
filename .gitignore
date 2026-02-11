@@ -206,3 +206,5 @@ marimo/_lsp/
 __marimo__/
 
 /app/lib/globalrp_conf/configs/*
+/test/
+/app/lib/service_configs/config*
