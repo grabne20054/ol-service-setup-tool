@@ -22,9 +22,6 @@ class RedisCacheConnector:
         else:
             raise Exception("Redis client is not connected")
 
-    def close(self):
-        self.redis_client.close()
-
     def get_client(self):
         if self.redis_client:
             return self.redis_client
